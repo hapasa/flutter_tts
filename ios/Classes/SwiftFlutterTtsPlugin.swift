@@ -462,6 +462,12 @@ public class SwiftFlutterTtsPlugin: NSObject, FlutterPlugin, AVSpeechSynthesizer
   }
 
   public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
+    // Resolve the pending speakResult so the Dart-side Future completes
+    // and rapid stop-plus-speak cycles don't leak uncompleted results.
+    if self.awaitSpeakCompletion && self.speakResult != nil {
+      self.speakResult!(0)
+      self.speakResult = nil
+    }
     self.channel.invokeMethod("speak.onCancel", arguments: nil)
   }
 

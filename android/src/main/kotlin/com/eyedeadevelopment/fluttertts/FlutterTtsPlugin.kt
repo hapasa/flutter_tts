@@ -117,7 +117,7 @@ class FlutterTtsPlugin : MethodCallHandler, FlutterPlugin {
                     invokeMethod("synth.onComplete", true)
                 } else {
                     Log.d(tag, "Utterance ID has completed: $utteranceId")
-                    if (awaitSpeakCompletion && queueMode == TextToSpeech.QUEUE_FLUSH) {
+                    if (awaitSpeakCompletion) {
                         speakCompletion(1)
                     }
                     invokeMethod("speak.onComplete", true)
@@ -302,10 +302,14 @@ class FlutterTtsPlugin : MethodCallHandler, FlutterPlugin {
                     }
                 }
                 if (speaking) {
-                    // If TTS is set to queue mode, allow the utterance to be queued up rather than discarded
+                    // MBraille owns queue policy from Dart; let the platform
+                    // accept every utterance regardless of mode.  The old
+                    // QUEUE_FLUSH guard silently dropped speech here.
                     if (queueMode == TextToSpeech.QUEUE_FLUSH) {
-                        result.success(0)
-                        return
+                        // Complete the previous await before starting a new one.
+                        if (awaitSpeakCompletion && speakResult != null) {
+                            speakCompletion(0)
+                        }
                     }
                 }
                 val b = speak(text, focus)
@@ -317,7 +321,7 @@ class FlutterTtsPlugin : MethodCallHandler, FlutterPlugin {
                     return
                 }
                 // Only use await speak completion if queueMode is set to QUEUE_FLUSH
-                if (awaitSpeakCompletion && queueMode == TextToSpeech.QUEUE_FLUSH) {
+                if (awaitSpeakCompletion) {
                     speaking = true
                     speakResult = result
                 } else {
